@@ -52,9 +52,11 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -267,6 +269,9 @@ public class ZestGuidance implements Guidance {
     protected boolean MEASURE_BEHAVIORAL_DIVERSITY = false;
     protected boolean TRACK_SEMANTIC_COVERAGE = false;
 
+    /** The file where log data is written. */
+    protected File mutationLog;
+
     // ------------- TIMEOUT HANDLING ------------
 
     /** Timeout for an individual run. */
@@ -317,6 +322,10 @@ public class ZestGuidance implements Guidance {
 
     /** Whether to steal responsibility from old inputs (this increases computation cost). */
     protected final boolean STEAL_RESPONSIBILITY = Boolean.getBoolean("jqf.ei.STEAL_RESPONSIBILITY");
+
+    protected final boolean OBSERVE_MUTATION_DISTANCE = Boolean.getBoolean("jqf.ei.OBSERVE_MUTATION_DISTANCE");
+
+    protected String currentRaw = null;
 
     /**
      * Creates a new Zest guidance instance with optional duration,
@@ -487,6 +496,7 @@ public class ZestGuidance implements Guidance {
         this.failureStatsFile = new File(outputDirectory, "failure_info.csv");
         this.currentInputFile = new File(outputDirectory, ".cur_input");
         this.coverageFile = new File(outputDirectory, "coverage_hash");
+        this.mutationLog = new File(outputDirectory, "mutation.log");
 
         // Perioridically serialize hit-counts (or after predefined timeout when assessing behavioral diversity)
         if (LOG_BRANCH_HIT_COUNTS || (MEASURE_BEHAVIORAL_DIVERSITY && (this.maxDurationMillis != Long.MAX_VALUE || this.maxTrials != Long.MAX_VALUE))) {
@@ -506,6 +516,7 @@ public class ZestGuidance implements Guidance {
         failureStatsFile.delete();
         logFile.delete();
         coverageFile.delete();
+        mutationLog.delete();
         for (File file : savedCorpusDirectory.listFiles()) {
             if (file.isDirectory()) { // BeDivFuzz generated folder structure
                 for (File innerFile : file.listFiles()) {
@@ -546,6 +557,22 @@ public class ZestGuidance implements Guidance {
         } catch (IOException e) {
             throw new GuidanceException(e);
         }
+    }
+
+    @Override
+    public void observeGeneratedArgs(Object[] args) {
+        if (!OBSERVE_MUTATION_DISTANCE) {
+            return;
+        }
+
+        if (args.length != 1) {
+            return;
+        }
+
+        if (!(args[0] instanceof String)) {
+            return;
+        }
+        currentRaw = (String) args[0];
     }
 
     @Override
@@ -930,6 +957,7 @@ public class ZestGuidance implements Guidance {
             this.numTrials++;
 
             boolean valid = result == Result.SUCCESS;
+            boolean toSave = false;
 
             if (valid) {
                 // Increment valid counter
@@ -946,7 +974,7 @@ public class ZestGuidance implements Guidance {
 
                 // Determine if this input should be saved
                 List<String> savingCriteriaSatisfied = checkSavingCriteriaSatisfied(result);
-                boolean toSave = savingCriteriaSatisfied.size() > 0;
+                toSave = savingCriteriaSatisfied.size() > 0;
 
                 if (toSave) {
                     String why = String.join(" ", savingCriteriaSatisfied);
@@ -1037,6 +1065,10 @@ public class ZestGuidance implements Guidance {
                 displayStats(false);
             }
 
+            if (OBSERVE_MUTATION_DISTANCE && !savedInputs.isEmpty()) {
+                logMutation(toSave, valid);
+            }
+
             // Save input unconditionally if such a setting is enabled
             if (LOG_ALL_INPUTS && (SAVE_ONLY_VALID ? valid : true)) {
                 File logDirectory = new File(allInputsDirectory, result.toString().toLowerCase());
@@ -1046,6 +1078,73 @@ public class ZestGuidance implements Guidance {
             }
         });
     }
+
+
+    public static int getLevenshteinDistFromString(String s1, String s2) {
+        return getLevenshteinDistFrom(s1.length(), s2.length(), (i, j) -> s1.charAt(i) == s2.charAt(j));
+    }
+
+    public static int getLevenshteinDistFromInput(Input<?> s1, Input<?> s2) {
+        if (s1 instanceof LinearInput && s2 instanceof LinearInput) {
+            return getLevenshteinDistFrom(s1.size(), s2.size(),
+                    (i, j) -> Objects.equals(((LinearInput) s1).values.get(i), ((LinearInput) s2).values.get(j)));
+        } else {
+            return -1;
+        }
+    }
+
+    private static int getLevenshteinDistFrom(int s1Length, int s2Length,
+                                              BiFunction<Integer, Integer, Boolean> comparator) {
+        int n = s2Length;
+        int[] v0 = new int[n + 1];
+        int[] v1 = new int[n + 1];
+        for (int i = 0; i < s2Length + 1; i++) {
+            v0[i] = i;
+        }
+        for (int i = 0; i < s1Length; i++) {
+            v1[0] = i + 1;
+            for (int j = 0; j < s2Length; j++) {
+                int deletionCost = v0[j + 1] + 1;
+                int insertionCost = v1[j] + 1;
+                int substitutionCost = 0;
+                if (comparator.apply(i, j)) {
+                    substitutionCost = v0[j];
+                } else {
+                    substitutionCost = v0[j] + 1;
+                }
+                int min = Math.min(deletionCost, insertionCost);
+                v1[j + 1] = Math.min(min, substitutionCost);
+            }
+            // swap
+            int[] tmp = v0;
+            v0 = v1;
+            v1 = tmp;
+        }
+        return v0[n];
+    }
+
+
+    private void logMutation(boolean saved, boolean valid) {
+        int parametricDistance = -1;
+        Input parentInput = savedInputs.get(currentParentInputIdx);
+        String parentRaw = parentInput.raw;
+        if (currentRaw != null && parentRaw != null) {
+            parametricDistance = getLevenshteinDistFromInput(currentInput, parentInput);
+            int distance = getLevenshteinDistFromString(currentRaw, parentRaw);
+            String text = currentRaw.length() + "," +  parentRaw.length() + "," +
+                    parametricDistance + "," + distance + "," + saved + "," + valid + ","
+                    + currentParentInputIdx + ",";
+            if (saved) {
+                text += Integer.toString(currentInput.id);
+            } else {
+                text += "-1";
+            }
+            text += ",-1";
+            appendLineToFile(mutationLog, text);
+        }
+    }
+
+
 
     // Return a list of saving criteria that have been satisfied for a non-failure input
     protected List<String> checkSavingCriteriaSatisfied(Result result) {
@@ -1346,6 +1445,11 @@ public class ZestGuidance implements Guidance {
          * operations.</p>
          */
         public String desc;
+
+        /**
+         * Raw string representation if available.
+         */
+        String raw;
 
         /**
          * The run coverage for this input, if the input is saved.
