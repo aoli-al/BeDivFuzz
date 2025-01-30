@@ -1,8 +1,9 @@
 package de.hub.se.jqf.bedivfuzz.examples.python;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
-import de.hub.se.jqf.bedivfuzz.junit.quickcheck.SplitGenerator;
-import de.hub.se.jqf.bedivfuzz.junit.quickcheck.SplitRandom;
+import com.pholser.junit.quickcheck.generator.Generator;
+import com.pholser.junit.quickcheck.random.SourceOfRandomness;
+import de.hub.se.jqf.fuzz.junit.quickcheck.SplitSourceOfRandomness;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import java.util.function.Function;
 
 import static org.junit.Assume.assumeTrue;
 
-public class SplitPythonGenerator extends SplitGenerator<String> {
+public class SplitPythonGenerator extends Generator<String> {
     public SplitPythonGenerator() {
         super(String.class); // Register type of generated object
 
@@ -74,7 +75,7 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     private static final String INDENT_TOKEN = "    "; // 4 spaces
 
     @Override
-    public String generate(SplitRandom random, GenerationStatus status) {
+    public String generate(SourceOfRandomness random, GenerationStatus status) {
         this.status = status; // we save this so that we can pass it on to other generators
         this.declarationDepth = 0;
         this.statementDepth = 0;
@@ -88,11 +89,11 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
             this.allTypes.add(identifier);
             this.classTypes.add(identifier);
         }
-        return generateProgram(random);
+        return generateProgram((SplitSourceOfRandomness) random);
     }
 
     /** Utility method for generating a random list of items (e.g. statements, arguments, attributes) */
-    private static List<String> generateItems(Function<SplitRandom, String> genMethod, SplitRandom random, int minimum) {
+    private static List<String> generateItems(Function<SplitSourceOfRandomness, String> genMethod, SplitSourceOfRandomness random, int minimum) {
         int len = nextIntBound(random, minimum, maxBound, maxItems);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
@@ -102,24 +103,24 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     }
 
     /** Utility method for generating a random list of items from a list of functions to choose from */
-    private static List<String> generateItemsMultipleMethods(List<Function<SplitRandom, String>> genMethods,
-                                                             SplitRandom random, int minimum) {
+    private static List<String> generateItemsMultipleMethods(List<Function<SplitSourceOfRandomness, String>> genMethods,
+                                                             SplitSourceOfRandomness random, int minimum) {
         int len = nextIntBound(random, minimum, maxBound, maxItems);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
-            items.add(random.chooseStructure(genMethods).apply(random));
+            items.add(random.choose(genMethods, true).apply(random));
         }
         return items;
     }
 
-    private static int nextIntBound(SplitRandom random, int minimum, int maximum, int maxParam) {
-        int randInt = random.nextStructureInt(minimum, maximum);
+    private static int nextIntBound(SplitSourceOfRandomness random, int minimum, int maximum, int maxParam) {
+        int randInt = random.nextInt(minimum, maximum, true);
         assumeTrue(randInt <= maxParam);
         return randInt;
     }
 
     /** Generates a random ChocoPy program of classes, declarations, and statements */
-    private String generateProgram(SplitRandom random) {
+    private String generateProgram(SplitSourceOfRandomness random) {
         String declarations = String.join("", generateItemsMultipleMethods(Arrays.asList(
                 this::generateClassDef,
                 this::generateFuncDef,
@@ -130,7 +131,7 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     }
 
     /** Generates a random ChocoPy declaration */
-    private String generateDeclaration(SplitRandom random) {
+    private String generateDeclaration(SplitSourceOfRandomness random) {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
         int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
         if (declarationDepth >= randDepth) {
@@ -139,62 +140,62 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         } else {
             // If depth is low and we won the flip, then generate compound declarations
             // (that is, declarations that contain other declarations)
-            result += random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateFuncDef
-            )).apply(random);
+            ), true).apply(random);
         }
         return result;
     }
 
     /** Generates a random ChocoPy function declaration */
-    private String generateFuncDeclaration(SplitRandom random) {
+    private String generateFuncDeclaration(SplitSourceOfRandomness random) {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
         int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
         if (declarationDepth >= randDepth) {
             // Choose a random private method from this class, and then call it with `random`
-            result += random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateVarDef,
                     this::generateNonlocalDecl,
                     this::generateGlobalDecl
-            )).apply(random);
+            ), true).apply(random);
         } else {
             // If depth is low and we won the flip, then generate compound declarations
             // (that is, declarations that contain other declarations)
-            result += random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateFuncDef
-            )).apply(random);
+            ), true).apply(random);
         }
         return result + "\n";
     }
 
     /** Generates a random ChocoPy statement */
-    private String generateStatement(SplitRandom random) {
+    private String generateStatement(SplitSourceOfRandomness random) {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
         // If depth is too high, then generate only simple statements to prevent infinite recursion
         // If not, generate simple statements after the flip of a coin
         int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
         if (statementDepth >= randDepth) {
             // Choose a random private method from this class, and then call it with `random`
-            result += random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateAssignStmt,
                     this::generatePassStmt,
                     this::generateReturnStmt,
                     this::generateExpressionStmt
-            )).apply(random);
+            ), true).apply(random);
         } else {
             // If depth is low and we won the flip, then generate compound statements
             // (that is, statements that contain other statements)
-            result += random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateIfStmt,
                     this::generateForStmt,
                     this::generateWhileStmt
-            )).apply(random);
+            ), true).apply(random);
         }
         return result + "\n";
     }
 
     /** Generates a random ChocoPy expression using recursive calls */
-    private String generateExpression(SplitRandom random) {
+    private String generateExpression(SplitSourceOfRandomness random) {
         String result;
         // Choose terminal if nesting depth is too high or based on a random flip of a coin
         int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
@@ -203,29 +204,29 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         } else {
             expressionDepth++;
             // Otherwise, choose a non-terminal generating function
-            result = random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateUnaryBoolExpr,
                     this::generateBinaryBoolExpr,
                     this::generateIfExpr
-            )).apply(random);
+            ), true).apply(random);
             expressionDepth--;
         }
         return result;
     }
 
-    private String generateCExpression(SplitRandom random) {
+    private String generateCExpression(SplitSourceOfRandomness random) {
         expressionDepth++;
         String result;
         // Choose terminal if nesting depth is too high or based on a random flip of a coin
         int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
         if (expressionDepth >= randDepth) {
-            result = random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateLiteral,
                     this::generateIdentifier
-            )).apply(random);
+            ), true).apply(random);
         } else {
             // Otherwise, choose a non-terminal generating function
-            result = random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            result = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateListExpr,
                     this::generateParenExpr,
                     this::generateMemberExpr,
@@ -234,29 +235,29 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
                     this::generateCallExpr,
                     this::generateBinaryExpr,
                     this::generateUnaryExpr
-            )).apply(random);
+            ), true).apply(random);
         }
         expressionDepth--;
         return result;
     }
 
-    private String generateAssignStmt(SplitRandom random) {
+    private String generateAssignStmt(SplitSourceOfRandomness random) {
         String result = "";
         int len = nextIntBound(random, 1, maxBound, maxDepth);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
-            String target = random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+            String target = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateIdentifier,
                     this::generateIndexExpr,
                     this::generateMemberExpr
-            )).apply(random);
+            ), true).apply(random);
             result += target + " = ";
         }
         return result + generateExpression(random);
     }
 
-    private String generateBinaryBoolExpr(SplitRandom random) {
-        String token = random.chooseValue(BINARY_BOOL_TOKENS);
+    private String generateBinaryBoolExpr(SplitSourceOfRandomness random) {
+        String token = random.choose(BINARY_BOOL_TOKENS, false);
         String lhs = generateCExpression(random);
         String rhs = generateCExpression(random);
 
@@ -264,8 +265,8 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     }
 
     /** Generates a random binary expression (e.g. A op B) */
-    private String generateBinaryExpr(SplitRandom random) {
-        String token = random.chooseValue(BINARY_TOKENS);
+    private String generateBinaryExpr(SplitSourceOfRandomness random) {
+        String token = random.choose(BINARY_TOKENS, false);
         String lhs = generateCExpression(random);
         String rhs = generateCExpression(random);
 
@@ -273,11 +274,11 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     }
 
     /** Generates a block of statements */
-    private String generateBlock(SplitRandom random, int minimum) {
+    private String generateBlock(SplitSourceOfRandomness random, int minimum) {
         return String.join("", generateItems(this::generateStatement, random, minimum));
     }
 
-    private String generateCallExpr(SplitRandom random) {
+    private String generateCallExpr(SplitSourceOfRandomness random) {
         String func = generateFuncIdentifier(random);
         String args = String.join(",", generateItems(this::generateExpression, random, 0));
 
@@ -285,7 +286,7 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         return call;
     }
 
-    private String generateClassDef(SplitRandom random) {
+    private String generateClassDef(SplitSourceOfRandomness random) {
         String result = "";
         String className = generateIdentifier(random);
         // Superclass could be one of the identifiers or object. Index should be from 0 to maxIdentifiers inclusive.
@@ -299,15 +300,15 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
     }
 
     /** Generates a block of VarDefs and FuncDefs*/
-    private String generateDeclarationBlock(SplitRandom random, int minimum) {
+    private String generateDeclarationBlock(SplitSourceOfRandomness random, int minimum) {
         return String.join("", generateItems(this::generateDeclaration, random, minimum));
     }
 
-    private String generateExpressionStmt(SplitRandom random) {
+    private String generateExpressionStmt(SplitSourceOfRandomness random) {
         return generateExpression(random);
     }
 
-    private String generateForStmt(SplitRandom random) {
+    private String generateForStmt(SplitSourceOfRandomness random) {
         statementDepth++;
         String s = "for " + generateIdentifier(random) + " in " + generateExpression(random) + ":\n";
         indentLevel++;
@@ -317,7 +318,7 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         return s;
     }
 
-    private String generateFuncDef(SplitRandom random) {
+    private String generateFuncDef(SplitSourceOfRandomness random) {
         declarationDepth++;
         String result = "def " + generateFuncIdentifier(random) + "("
                 + String.join(", ", generateItems(this::generateTypedVar, random, 0)) + ")";
@@ -330,16 +331,16 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         return result + "\n";
     }
 
-    private String generateGlobalDecl(SplitRandom random) {
+    private String generateGlobalDecl(SplitSourceOfRandomness random) {
         return "global " + generateIdentifier(random) + "\n";
     }
 
-    private String generateIdentifier(SplitRandom random) {
+    private String generateIdentifier(SplitSourceOfRandomness random) {
         int index = nextIntBound(random, 0, maxBound, maxIdentifiers - 1);
         return identifiers.get(index);
     }
 
-    private String generateFuncIdentifier(SplitRandom random) {
+    private String generateFuncIdentifier(SplitSourceOfRandomness random) {
         int index = nextIntBound(random, 0, funcIdentifiers.size(),
                 maxIdentifiers + BASE_TYPES.length);
         return funcIdentifiers.get(index);
@@ -358,24 +359,24 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         }
     }
 
-    private String generateIfExpr(SplitRandom random) {
+    private String generateIfExpr(SplitSourceOfRandomness random) {
         return generateExpression(random) + " if " + generateExpression(random) + " else " + generateExpression(random);
     }
 
-    private String generateIfStmt(SplitRandom random) {
+    private String generateIfStmt(SplitSourceOfRandomness random) {
         statementDepth++;
         String result = "if " + generateExpression(random) + ":\n";
         indentLevel++;
         result += generateBlock(random, 1);
         indentLevel--;
-        if (random.nextStructureBoolean()) {
+        if (random.nextBoolean(true)) {
             result += StringUtils.repeat(INDENT_TOKEN, indentLevel);
             result += "elif " + generateExpression(random) + ":\n";
             indentLevel++;
             result += generateBlock(random, 1);
             indentLevel--;
         }
-        if (random.nextStructureBoolean()) {
+        if (random.nextBoolean(true)) {
             result += StringUtils.repeat(INDENT_TOKEN, indentLevel);
             result += "else:\n";
             indentLevel++;
@@ -386,66 +387,66 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         return result;
     }
 
-    private String generateIndexExpr(SplitRandom random) {
+    private String generateIndexExpr(SplitSourceOfRandomness random) {
         return "(" + generateCExpression(random) + ")[" + generateExpression(random) + "]";
     }
 
-    private String generateListExpr(SplitRandom random) {
+    private String generateListExpr(SplitSourceOfRandomness random) {
         return "[" + String.join(", ", generateItems(this::generateExpression, random, 0)) + "]";
     }
 
     // Generate fixed primitive literals
-    private String generateLiteral(SplitRandom random) {
+    private String generateLiteral(SplitSourceOfRandomness random) {
 
-        return random.chooseStructure(Arrays.<Function<SplitRandom, String>>asList(
+        return random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                 this::generateIntLiteral,
                 this::generateStringLiteral,
                 this::generateBoolLiteral,
-                this::generateNoneLiteral)).apply(random);
+                this::generateNoneLiteral), true).apply(random);
     }
 
-    private String generateIntLiteral(SplitRandom random) {
-        return random.chooseValue(INT_LITERALS);
+    private String generateIntLiteral(SplitSourceOfRandomness random) {
+        return random.choose(INT_LITERALS, false);
     }
 
-    private String generateStringLiteral(SplitRandom random) {
-        return random.chooseValue(STRING_LITERALS);
+    private String generateStringLiteral(SplitSourceOfRandomness random) {
+        return random.choose(STRING_LITERALS, false);
     }
 
-    private String generateBoolLiteral(SplitRandom random) {
-        return random.chooseValue(BOOL_LITERALS);
+    private String generateBoolLiteral(SplitSourceOfRandomness random) {
+        return random.choose(BOOL_LITERALS, false);
     }
 
-    private String generateNoneLiteral(SplitRandom random) {
+    private String generateNoneLiteral(SplitSourceOfRandomness random) {
         return "None";
     }
 
-    private String generateMemberExpr(SplitRandom random) {
+    private String generateMemberExpr(SplitSourceOfRandomness random) {
         return "(" + generateCExpression(random) + ")." + generateIdentifier(random);
     }
 
-    private String generateMethodCallExpr(SplitRandom random) {
+    private String generateMethodCallExpr(SplitSourceOfRandomness random) {
         return generateCExpression(random) + "." + generateCallExpr(random);
     }
 
-    private String generateNonlocalDecl(SplitRandom random) {
+    private String generateNonlocalDecl(SplitSourceOfRandomness random) {
         return "nonlocal " + generateIdentifier(random) + "\n";
     }
 
-    private String generateParenExpr(SplitRandom random) {
+    private String generateParenExpr(SplitSourceOfRandomness random) {
         return "(" + generateExpression(random) + ")";
     }
 
-    private String generatePassStmt(SplitRandom random) {
+    private String generatePassStmt(SplitSourceOfRandomness random) {
         return "pass";
     }
 
-    private String generateReturnStmt(SplitRandom random) {
-        return random.nextStructureBoolean() ? "return" : "return " + generateExpression(random);
+    private String generateReturnStmt(SplitSourceOfRandomness random) {
+        return random.nextBoolean(true) ? "return" : "return " + generateExpression(random);
     }
 
     /** Randomly choose from types and random list depth using maxDepth parameter */
-    private String generateType(SplitRandom random) {
+    private String generateType(SplitSourceOfRandomness random) {
         int typeIndex = nextIntBound(random, 0, allTypes.size(), BASE_TYPES.length + maxIdentifiers - 1);
         String type = allTypes.get(typeIndex);
         int listDepth = nextIntBound(random, 0, maxBound, maxDepth);
@@ -455,23 +456,23 @@ public class SplitPythonGenerator extends SplitGenerator<String> {
         return type;
     }
 
-    private String generateTypedVar(SplitRandom random) {
+    private String generateTypedVar(SplitSourceOfRandomness random) {
         return generateIdentifier(random);
     }
 
-    private String generateUnaryBoolExpr(SplitRandom random) {
+    private String generateUnaryBoolExpr(SplitSourceOfRandomness random) {
         return "not " + generateExpression(random);
     }
 
-    private String generateUnaryExpr(SplitRandom random) {
+    private String generateUnaryExpr(SplitSourceOfRandomness random) {
         return "-" + generateCExpression(random);
     }
 
-    private String generateVarDef(SplitRandom random) {
+    private String generateVarDef(SplitSourceOfRandomness random) {
         return generateTypedVar(random) + " = " + generateLiteral(random) + "\n";
     }
 
-    private String generateWhileStmt(SplitRandom random) {
+    private String generateWhileStmt(SplitSourceOfRandomness random) {
         statementDepth++;
         indentLevel++;
         String result = "while " + generateExpression(random) + ":\n" + generateBlock(random, 1);
