@@ -2,7 +2,6 @@ package edu.berkeley.cs.jqf.examples.jython;
 
 
 import com.pholser.junit.quickcheck.From;
-import de.hub.se.jqf.bedivfuzz.examples.js.SplitJavaScriptCodeGenerator;
 import de.hub.se.jqf.bedivfuzz.examples.python.SplitPythonGenerator;
 import edu.berkeley.cs.jqf.fuzz.Fuzz;
 import edu.berkeley.cs.jqf.fuzz.JQF;
@@ -15,10 +14,6 @@ import org.python.core.ParserFacade;
 import org.python.core.Py;
 import org.python.core.PythonCodeBundle;
 import org.python.core.PythonCompiler;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 @RunWith(JQF.class)
 public class JythonInterpreterTest {
