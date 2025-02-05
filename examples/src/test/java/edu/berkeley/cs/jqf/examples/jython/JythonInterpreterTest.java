@@ -2,7 +2,7 @@ package edu.berkeley.cs.jqf.examples.jython;
 
 
 import com.pholser.junit.quickcheck.From;
-import de.hub.se.jqf.bedivfuzz.examples.python.SplitPythonGenerator;
+import de.hub.se.jqf.examples.python.SplitPythonGenerator;
 import edu.berkeley.cs.jqf.fuzz.Fuzz;
 import edu.berkeley.cs.jqf.fuzz.JQF;
 import org.junit.runner.RunWith;

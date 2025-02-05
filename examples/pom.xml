@@ -75,6 +75,7 @@
         <dependency>
             <groupId>edu.berkeley.cs.jqf</groupId>
             <artifactId>jqf-fuzz</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.struts</groupId>
@@ -277,7 +278,7 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
-<!--            <plugin>-->
+            <!--            <plugin>-->
 <!--                <groupId>edu.berkeley.cs.jqf</groupId>-->
 <!--                <artifactId>jqf-maven-plugin</artifactId>-->
 <!--            </plugin>-->

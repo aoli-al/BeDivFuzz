@@ -950,7 +950,7 @@ public class ZestGuidance implements Guidance {
         }
     }
 
-    private static int getLevenshteinDistFrom(int s1Length, int s2Length,
+    public static int getLevenshteinDistFrom(int s1Length, int s2Length,
                                               BiFunction<Integer, Integer, Boolean> comparator) {
         int n = s2Length;
         int[] v0 = new int[n + 1];
@@ -981,7 +981,7 @@ public class ZestGuidance implements Guidance {
     }
 
 
-    private void logMutation(boolean saved, Result result) {
+    protected void logMutation(boolean saved, Result result) {
         int parametricDistance = -1;
         Input parentInput = savedInputs.get(currentParentInputIdx);
         String parentRaw = parentInput.raw;
@@ -1142,6 +1142,7 @@ public class ZestGuidance implements Guidance {
         currentInput.coverage = runCoverage.copy();
         currentInput.nonZeroCoverage = runCoverage.getNonZeroCount();
         currentInput.offspring = 0;
+        currentInput.raw = currentRaw;
         savedInputs.get(currentParentInputIdx).offspring += 1;
 
         // Fourth, assume responsibility for branches
@@ -1362,7 +1363,7 @@ public class ZestGuidance implements Guidance {
     public class LinearInput extends Input<Integer> {
 
         /** A list of byte values (0-255) ordered by their index. */
-        protected ArrayList<Integer> values;
+        public ArrayList<Integer> values;
 
         /** The number of bytes requested so far */
         protected int requested = 0;

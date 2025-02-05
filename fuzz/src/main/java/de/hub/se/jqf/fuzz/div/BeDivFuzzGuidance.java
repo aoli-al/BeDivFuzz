@@ -251,6 +251,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
     public void observeGeneratedArgs(Object[] args) {
         lastGeneratedInputsHash = Arrays.hashCode(args);
         lastGeneratedStructureHash = ((LinearInput) currentInput.primaryInput).hashCode();
+        super.observeGeneratedArgs(args);
     }
 
     @Override
@@ -365,6 +366,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
 
                 // We won't add any coverage hash yet as we still need to decide whether to save the input
             }
+            boolean toSave = false;
 
             if (result == Result.SUCCESS || (result == Result.INVALID && !SAVE_ONLY_VALID)) {
 
@@ -376,7 +378,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
 
                 // Determine if this input should be saved
                 List<String> savingCriteriaSatisfied = checkSavingCriteriaSatisfied(result);
-                boolean toSave = savingCriteriaSatisfied.size() > 0;
+                toSave = savingCriteriaSatisfied.size() > 0;
 
                 if (toSave) {
                     // Add new valid structure which has increased coverage
@@ -496,6 +498,10 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
             if (!LIBFUZZER_COMPAT_OUTPUT) {
                 displayStats(false);
             }
+
+            if (OBSERVE_MUTATION_DISTANCE && !savedInputs.isEmpty()) {
+                logMutation(toSave, result);
+            }
         });
     }
 
@@ -613,6 +619,46 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
 
     }
 
+    public static int getLevenshteinDistFromSplitInput(SplitLinearInput s1, SplitLinearInput s2) {
+        return getLevenshteinDistFrom(s1.size(), s2.size(),
+                (i, j) -> {
+                    Integer s1Value;
+                    if (i < s1.primaryInput.size()) {
+                        s1Value = ((LinearInput) s1.primaryInput).values.get(i);
+                    } else {
+                        s1Value = ((LinearInput) s1.secondaryInput).values.get(i - s1.primaryInput.size());
+                    }
+                    Integer s2Value;
+                    if (j < s2.primaryInput.size()) {
+                        s2Value = ((LinearInput) s2.primaryInput).values.get(j);
+                    } else {
+                        s2Value = ((LinearInput) s2.secondaryInput).values.get(j - s2.primaryInput.size());
+                    }
+                    return s1Value.equals(s2Value);
+                });
+    }
+
+    @Override
+    protected void logMutation(boolean saved, Result result) {
+        int parametricDistance = -1;
+        SplitLinearInput parentInput = savedInputs.get(currentParentInputIdx);
+        String parentRaw = parentInput.raw;
+        if (currentRaw != null && parentRaw != null) {
+            parametricDistance = getLevenshteinDistFromSplitInput(currentInput, parentInput);
+            int distance = getLevenshteinDistFromString(currentRaw, parentRaw);
+            String text = currentRaw.length() + "," +  parentRaw.length() + "," +
+                    parametricDistance + "," + distance + "," + saved + "," + result + ","
+                    + currentParentInputIdx + ",";
+            if (saved) {
+                text += Integer.toString(currentInput.id);
+            } else {
+                text += "-1";
+            }
+            text += ",-1";
+            appendLineToFile(mutationLog, text);
+        }
+    }
+
     @Override
     protected void saveCurrentInput(IntHashSet responsibilities, String why) throws IOException {
 
@@ -645,6 +691,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
         currentInput.coverage = runCoverage.copy();
         currentInput.nonZeroCoverage = runCoverage.getNonZeroCount();
         currentInput.offspring = 0;
+        currentInput.raw = currentRaw;
         savedInputs.get(currentParentInputIdx).offspring += 1;
 
         // Fourth, assume responsibility for branches

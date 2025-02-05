@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package edu.berkeley.cs.jqf.examples.xml;
+package de.hub.se.jqf.examples.xml;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.generator.Generator;
@@ -36,6 +36,7 @@ import de.hub.se.jqf.fuzz.junit.quickcheck.SplitSourceOfRandomness;
 import edu.berkeley.cs.jqf.examples.common.AlphaStringGenerator;
 import edu.berkeley.cs.jqf.examples.common.Dictionary;
 import edu.berkeley.cs.jqf.examples.common.SplitDictionaryBackedStringGenerator;
+import edu.berkeley.cs.jqf.examples.xml.XmlDocumentGenerator;
 import org.junit.Assume;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;

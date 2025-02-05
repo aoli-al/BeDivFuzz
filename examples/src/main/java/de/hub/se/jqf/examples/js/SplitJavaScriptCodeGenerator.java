@@ -1,4 +1,4 @@
-package edu.berkeley.cs.jqf.examples.js;
+package de.hub.se.jqf.examples.js;
 
 import java.util.*;
 import java.util.function.*;
@@ -10,11 +10,10 @@ import com.pholser.junit.quickcheck.random.SourceOfRandomness;
 import de.hub.se.jqf.examples.common.SplitAsciiStringGenerator;
 import de.hub.se.jqf.fuzz.junit.quickcheck.NonTrackingSplitGenerationStatus;
 import de.hub.se.jqf.fuzz.junit.quickcheck.SplitSourceOfRandomness;
-import edu.berkeley.cs.jqf.examples.common.AsciiStringGenerator;
 
 /* Generates random strings that are syntactically valid JavaScript */
-public class SplitJSCodeGenerator extends Generator<String> {
-    public SplitJSCodeGenerator() {
+public class SplitJavaScriptCodeGenerator extends Generator<String> {
+    public SplitJavaScriptCodeGenerator() {
         super(String.class); // Register type of generated object
     }
 

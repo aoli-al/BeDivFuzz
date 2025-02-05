@@ -20,6 +20,11 @@ public class SplitLinearInput implements SplitInput {
     public final Input secondaryInput;
 
     /**
+     * Raw string representation if available.
+     */
+    String raw;
+
+    /**
      * The files where this input is saved.
      *
      * <p>This field is null for inputs that are not saved.</p>

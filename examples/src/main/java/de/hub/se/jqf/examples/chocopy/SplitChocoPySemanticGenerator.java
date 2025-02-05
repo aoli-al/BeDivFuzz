@@ -1,4 +1,9 @@
-package de.hub.se.jqf.bedivfuzz.examples.python;
+package de.hub.se.jqf.examples.chocopy;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.generator.Generator;
@@ -6,15 +11,12 @@ import com.pholser.junit.quickcheck.random.SourceOfRandomness;
 import de.hub.se.jqf.fuzz.junit.quickcheck.SplitSourceOfRandomness;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
 
 import static org.junit.Assume.assumeTrue;
 
-public class SplitPythonGenerator extends Generator<String> {
-    public SplitPythonGenerator() {
+/* Generates random strings that are syntactically valid ChocoPy */
+public class SplitChocoPySemanticGenerator extends Generator<String> {
+    public SplitChocoPySemanticGenerator() {
         super(String.class); // Register type of generated object
 
         // Read parameters from system properties
@@ -74,6 +76,8 @@ public class SplitPythonGenerator extends Generator<String> {
 
     private static final String INDENT_TOKEN = "    "; // 4 spaces
 
+
+    /** Main entry point. Called once per test case. Returns a random ChocoPy program. */
     @Override
     public String generate(SourceOfRandomness random, GenerationStatus status) {
         this.status = status; // we save this so that we can pass it on to other generators
@@ -94,7 +98,7 @@ public class SplitPythonGenerator extends Generator<String> {
 
     /** Utility method for generating a random list of items (e.g. statements, arguments, attributes) */
     private static List<String> generateItems(Function<SplitSourceOfRandomness, String> genMethod, SplitSourceOfRandomness random, int minimum) {
-        int len = nextIntBound(random, minimum, maxBound, maxItems);
+        int len = nextStructureIntBound(random, minimum, maxBound, maxItems);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             items.add(genMethod.apply(random));
@@ -103,9 +107,8 @@ public class SplitPythonGenerator extends Generator<String> {
     }
 
     /** Utility method for generating a random list of items from a list of functions to choose from */
-    private static List<String> generateItemsMultipleMethods(List<Function<SplitSourceOfRandomness, String>> genMethods,
-                                                             SplitSourceOfRandomness random, int minimum) {
-        int len = nextIntBound(random, minimum, maxBound, maxItems);
+    private static List<String> generateItemsMultipleMethods(List<Function<SplitSourceOfRandomness, String>> genMethods, SplitSourceOfRandomness random, int minimum) {
+        int len = nextStructureIntBound(random, minimum, maxBound, maxItems);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             items.add(random.choose(genMethods, true).apply(random));
@@ -113,7 +116,13 @@ public class SplitPythonGenerator extends Generator<String> {
         return items;
     }
 
-    private static int nextIntBound(SplitSourceOfRandomness random, int minimum, int maximum, int maxParam) {
+    private static int nextStructureIntBound(SplitSourceOfRandomness random, int minimum, int maximum, int maxParam) {
+        int randInt = random.nextInt(minimum, maximum, true);
+        assumeTrue(randInt <= maxParam);
+        return randInt;
+    }
+
+    private static int nextValueIntBound(SplitSourceOfRandomness random, int minimum, int maximum, int maxParam) {
         int randInt = random.nextInt(minimum, maximum, true);
         assumeTrue(randInt <= maxParam);
         return randInt;
@@ -133,7 +142,7 @@ public class SplitPythonGenerator extends Generator<String> {
     /** Generates a random ChocoPy declaration */
     private String generateDeclaration(SplitSourceOfRandomness random) {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
-        int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int randDepth = nextStructureIntBound(random, 0, maxBound, maxDepth);
         if (declarationDepth >= randDepth) {
             // Choose a random private method from this class, and then call it with `random`
             result += generateVarDef(random);
@@ -150,7 +159,7 @@ public class SplitPythonGenerator extends Generator<String> {
     /** Generates a random ChocoPy function declaration */
     private String generateFuncDeclaration(SplitSourceOfRandomness random) {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
-        int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int randDepth = nextStructureIntBound(random, 0, maxBound, maxDepth);
         if (declarationDepth >= randDepth) {
             // Choose a random private method from this class, and then call it with `random`
             result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
@@ -173,7 +182,7 @@ public class SplitPythonGenerator extends Generator<String> {
         String result = StringUtils.repeat(INDENT_TOKEN, indentLevel);
         // If depth is too high, then generate only simple statements to prevent infinite recursion
         // If not, generate simple statements after the flip of a coin
-        int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int randDepth = nextStructureIntBound(random, 0, maxBound, maxDepth);
         if (statementDepth >= randDepth) {
             // Choose a random private method from this class, and then call it with `random`
             result += random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
@@ -198,7 +207,7 @@ public class SplitPythonGenerator extends Generator<String> {
     private String generateExpression(SplitSourceOfRandomness random) {
         String result;
         // Choose terminal if nesting depth is too high or based on a random flip of a coin
-        int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int randDepth = nextStructureIntBound(random, 0, maxBound, maxDepth);
         if (expressionDepth >= randDepth) {
             result = generateCExpression(random);
         } else {
@@ -218,7 +227,7 @@ public class SplitPythonGenerator extends Generator<String> {
         expressionDepth++;
         String result;
         // Choose terminal if nesting depth is too high or based on a random flip of a coin
-        int randDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int randDepth = nextStructureIntBound(random, 0, maxBound, maxDepth);
         if (expressionDepth >= randDepth) {
             result = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
                     this::generateLiteral,
@@ -243,7 +252,7 @@ public class SplitPythonGenerator extends Generator<String> {
 
     private String generateAssignStmt(SplitSourceOfRandomness random) {
         String result = "";
-        int len = nextIntBound(random, 1, maxBound, maxDepth);
+        int len = nextStructureIntBound(random, 1, maxBound, maxDepth);
         List<String> items = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             String target = random.choose(Arrays.<Function<SplitSourceOfRandomness, String>>asList(
@@ -290,7 +299,7 @@ public class SplitPythonGenerator extends Generator<String> {
         String result = "";
         String className = generateIdentifier(random);
         // Superclass could be one of the identifiers or object. Index should be from 0 to maxIdentifiers inclusive.
-        int superClassIndex = nextIntBound(random, 0, classTypes.size(), maxIdentifiers);
+        int superClassIndex = nextValueIntBound(random, 0, classTypes.size(), maxIdentifiers);
         String superClassName = classTypes.get(superClassIndex);
         result += "class " + className + "(" + superClassName + "):\n";
         indentLevel++;
@@ -322,6 +331,9 @@ public class SplitPythonGenerator extends Generator<String> {
         declarationDepth++;
         String result = "def " + generateFuncIdentifier(random) + "("
                 + String.join(", ", generateItems(this::generateTypedVar, random, 0)) + ")";
+        if (random.nextBoolean(true)) {
+            result += "->" + generateType(random);
+        }
         result += ":\n";
         indentLevel++;
         result += String.join("", generateItems(this::generateFuncDeclaration, random, 0));
@@ -336,12 +348,12 @@ public class SplitPythonGenerator extends Generator<String> {
     }
 
     private String generateIdentifier(SplitSourceOfRandomness random) {
-        int index = nextIntBound(random, 0, maxBound, maxIdentifiers - 1);
+        int index = nextValueIntBound(random, 0, maxBound, maxIdentifiers - 1);
         return identifiers.get(index);
     }
 
     private String generateFuncIdentifier(SplitSourceOfRandomness random) {
-        int index = nextIntBound(random, 0, funcIdentifiers.size(),
+        int index = nextValueIntBound(random, 0, funcIdentifiers.size(),
                 maxIdentifiers + BASE_TYPES.length);
         return funcIdentifiers.get(index);
     }
@@ -447,9 +459,9 @@ public class SplitPythonGenerator extends Generator<String> {
 
     /** Randomly choose from types and random list depth using maxDepth parameter */
     private String generateType(SplitSourceOfRandomness random) {
-        int typeIndex = nextIntBound(random, 0, allTypes.size(), BASE_TYPES.length + maxIdentifiers - 1);
+        int typeIndex = nextValueIntBound(random, 0, allTypes.size(), BASE_TYPES.length + maxIdentifiers - 1);
         String type = allTypes.get(typeIndex);
-        int listDepth = nextIntBound(random, 0, maxBound, maxDepth);
+        int listDepth = nextValueIntBound(random, 0, maxBound, maxDepth);
         for (int i = 0; i < listDepth; i++) {
             type = "[" + type + "]";
         }
@@ -457,7 +469,10 @@ public class SplitPythonGenerator extends Generator<String> {
     }
 
     private String generateTypedVar(SplitSourceOfRandomness random) {
-        return generateIdentifier(random);
+        String result = "";
+        String type = generateType(random);
+        result += generateIdentifier(random) + ":" + type;
+        return result;
     }
 
     private String generateUnaryBoolExpr(SplitSourceOfRandomness random) {
@@ -480,5 +495,4 @@ public class SplitPythonGenerator extends Generator<String> {
         statementDepth--;
         return result;
     }
-
 }
