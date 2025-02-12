@@ -47,14 +47,20 @@ import org.w3c.dom.Text;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
+import java.io.StringWriter;
 
 /**
  * A generator for XML documents. Adapted from {@link XmlDocumentGenerator}.
  *
  * @author Hoang Lam Nguyen
  */
-public class SplitXmlDocumentGenerator extends Generator<Document> {
+public class SplitXmlDocumentGenerator extends Generator<String> {
 
     private static DocumentBuilderFactory documentBuilderFactory =
             DocumentBuilderFactory.newInstance();
@@ -83,7 +89,7 @@ public class SplitXmlDocumentGenerator extends Generator<Document> {
     private Generator<String> stringGenerator = new AlphaStringGenerator();
 
     public SplitXmlDocumentGenerator() {
-        super(Document.class);
+        super(String.class);
     }
 
     /**
@@ -121,7 +127,7 @@ public class SplitXmlDocumentGenerator extends Generator<Document> {
      * @return a randomly-generated XML document
      */
     @Override
-    public Document generate(SourceOfRandomness random, GenerationStatus status) {
+    public String generate(SourceOfRandomness random, GenerationStatus status) {
         DocumentBuilder builder;
         try {
             builder = documentBuilderFactory.newDocumentBuilder();
@@ -140,8 +146,15 @@ public class SplitXmlDocumentGenerator extends Generator<Document> {
         } catch (DOMException e) {
             Assume.assumeNoException(e);
         }
-        return document;
-
+        try {
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StringWriter stream = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(stream));
+            return stream.toString();
+        } catch (TransformerException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String makeString(SplitSourceOfRandomness random, GenerationStatus status) {

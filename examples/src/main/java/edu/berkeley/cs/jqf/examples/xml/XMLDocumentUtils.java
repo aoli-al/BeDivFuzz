@@ -37,6 +37,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 
 import org.w3c.dom.Document;
 
@@ -56,6 +57,10 @@ public class XMLDocumentUtils {
         } catch (TransformerException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static InputStream documentToInputStream(String document) {
+        return new ByteArrayInputStream(document.getBytes(StandardCharsets.UTF_8));
     }
 
     public static InputStream documentToInputStream(Document document) {

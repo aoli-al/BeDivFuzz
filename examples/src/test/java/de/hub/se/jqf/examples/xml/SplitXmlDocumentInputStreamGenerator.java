@@ -35,8 +35,10 @@ import edu.berkeley.cs.jqf.examples.common.Dictionary;
 import edu.berkeley.cs.jqf.examples.xml.XMLDocumentUtils;
 import org.w3c.dom.Document;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A generator for XML documents. Adapted from.
@@ -74,8 +76,8 @@ public class SplitXmlDocumentInputStreamGenerator extends Generator<InputStream>
      */
     @Override
     public InputStream generate(SourceOfRandomness random, GenerationStatus status) {
-        Document doc = XmlDocGen.generate(random, status);
-        return XMLDocumentUtils.documentToInputStream(doc);
+        String doc = XmlDocGen.generate(random, status);
+        return new ByteArrayInputStream(doc.getBytes(StandardCharsets.UTF_8));
 
     }
 

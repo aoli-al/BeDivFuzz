@@ -85,20 +85,20 @@ public class ProjectBuilderTest {
 
     @Fuzz
     public void testWithGenerator(@From(XmlDocumentGenerator.class)
-                                      @Dictionary("dictionaries/ant-project.dict") Document dom) {
-        testWithInputStream(XMLDocumentUtils.documentToInputStream(dom));
+                                      @Dictionary("dictionaries/ant-project.dict") String dom) {
+        testWithString(dom);
     }
 
     @Fuzz
     public void testWithSplitGenerator(@From(SplitXmlDocumentGenerator.class)
-                                  @Dictionary("dictionaries/ant-project.dict") Document dom) {
-        testWithInputStream(XMLDocumentUtils.documentToInputStream(dom));
+                                  @Dictionary("dictionaries/ant-project.dict") String dom) {
+        testWithString(dom);
     }
 
     @Fuzz
     public void debugWithGenerator(@From(XmlDocumentGenerator.class)
-                                       @Dictionary("dictionaries/ant-project.dict") Document dom) {
-        System.out.println(XMLDocumentUtils.documentToString(dom));
+                                       @Dictionary("dictionaries/ant-project.dict") String dom) {
+//        System.out.println(XMLDocumentUtils.documentToString(dom));
         testWithGenerator(dom);
     }
 
