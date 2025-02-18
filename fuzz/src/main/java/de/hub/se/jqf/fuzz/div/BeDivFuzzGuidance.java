@@ -367,6 +367,11 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
                 // We won't add any coverage hash yet as we still need to decide whether to save the input
             }
             boolean toSave = false;
+            int parametricDistance = 0;
+            if (OBSERVE_MUTATION_DISTANCE && !savedInputs.isEmpty()) {
+                SplitLinearInput parentInput = savedInputs.get(currentParentInputIdx);
+                parametricDistance = getLevenshteinDistFromSplitInput(currentInput, parentInput);
+            }
 
             if (result == Result.SUCCESS || (result == Result.INVALID && !SAVE_ONLY_VALID)) {
 
@@ -500,7 +505,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
             }
 
             if (OBSERVE_MUTATION_DISTANCE && !savedInputs.isEmpty()) {
-                logMutation(toSave, result);
+                logMutation(toSave, result, parametricDistance);
             }
         });
     }
@@ -638,13 +643,10 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
                 });
     }
 
-    @Override
-    protected void logMutation(boolean saved, Result result) {
-        int parametricDistance = -1;
+    protected void logMutation(boolean saved, Result result, int parametricDistance) {
         SplitLinearInput parentInput = savedInputs.get(currentParentInputIdx);
         String parentRaw = parentInput.raw;
         if (currentRaw != null && parentRaw != null) {
-            parametricDistance = getLevenshteinDistFromSplitInput(currentInput, parentInput);
             int distance = getLevenshteinDistFromString(currentRaw, parentRaw);
             String text = currentRaw.length() + "," +  parentRaw.length() + "," +
                     currentInput.size() + "," + parentInput.size() + "," +

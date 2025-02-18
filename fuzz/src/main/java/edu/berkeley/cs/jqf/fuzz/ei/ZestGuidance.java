@@ -922,9 +922,6 @@ public class ZestGuidance implements Guidance {
                 displayStats(false);
             }
 
-            if (OBSERVE_MUTATION_DISTANCE && !savedInputs.isEmpty()) {
-                logMutation(toSave, result);
-            }
 
             // Save input unconditionally if such a setting is enabled
             if (LOG_ALL_INPUTS && (SAVE_ONLY_VALID ? valid : true)) {
@@ -979,28 +976,6 @@ public class ZestGuidance implements Guidance {
         }
         return v0[n];
     }
-
-
-    protected void logMutation(boolean saved, Result result) {
-        int parametricDistance = -1;
-        Input parentInput = savedInputs.get(currentParentInputIdx);
-        String parentRaw = parentInput.raw;
-        if (currentRaw != null && parentRaw != null) {
-            parametricDistance = getLevenshteinDistFromInput(currentInput, parentInput);
-            int distance = getLevenshteinDistFromString(currentRaw, parentRaw);
-            String text = currentRaw.length() + "," +  parentRaw.length() + "," +
-                    parametricDistance + "," + distance + "," + saved + "," + result + ","
-                    + currentParentInputIdx + ",";
-            if (saved) {
-                text += Integer.toString(currentInput.id);
-            } else {
-                text += "-1";
-            }
-            text += ",-1";
-            appendLineToFile(mutationLog, text);
-        }
-    }
-
 
 
     // Return a list of saving criteria that have been satisfied for a non-failure input
