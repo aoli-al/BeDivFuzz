@@ -651,7 +651,7 @@ public class BeDivFuzzGuidance extends ZestGuidance implements BeDivGuidance {
             String text = currentRaw.length() + "," +  parentRaw.length() + "," +
                     currentInput.size() + "," + parentInput.size() + "," +
                     parametricDistance + "," + distance + "," + saved + "," + result + ","
-                    + currentParentInputIdx + ",";
+                    + parentInput.id + ",";
             if (saved) {
                 text += Integer.toString(currentInput.id);
             } else {
